@@ -12,6 +12,7 @@ class Tweet {
   final List<String> commentIds;
   final String id;
   final int reshareCount;
+  final String retweetedBy; // New property
 
   Tweet({
     required this.text,
@@ -25,6 +26,7 @@ class Tweet {
     required this.commentIds,
     required this.id,
     required this.reshareCount,
+    required this.retweetedBy, // New property
   });
 
   factory Tweet.fromMap(Map<String, dynamic> map) {
@@ -40,6 +42,7 @@ class Tweet {
       commentIds: List<String>.from(map['commentIds'] as List<dynamic>),
       id: map['\$id'] as String,
       reshareCount: map['reshareCount'] as int,
+      retweetedBy: map['retweetedBy'] as String, // New property
     );
   }
 
@@ -55,7 +58,38 @@ class Tweet {
       'likes': likes,
       'commentIds': commentIds,
       'reshareCount': reshareCount,
+      'retweetedBy': retweetedBy, // New property
     };
+  }
+
+  Tweet copyWith({
+    String? text,
+    List<String>? hashtags,
+    String? link,
+    List<String>? imageLinks,
+    String? uid,
+    TweetType? tweetType,
+    DateTime? tweetedAt,
+    List<String>? likes,
+    List<String>? commentIds,
+    String? id,
+    int? reshareCount,
+    String? retweetedBy, // Include the new property here
+  }) {
+    return Tweet(
+      text: text ?? this.text,
+      hashtags: hashtags ?? this.hashtags,
+      link: link ?? this.link,
+      imageLinks: imageLinks ?? this.imageLinks,
+      uid: uid ?? this.uid,
+      tweetType: tweetType ?? this.tweetType,
+      tweetedAt: tweetedAt ?? this.tweetedAt,
+      likes: likes ?? this.likes,
+      commentIds: commentIds ?? this.commentIds,
+      id: id ?? this.id,
+      reshareCount: reshareCount ?? this.reshareCount,
+      retweetedBy: retweetedBy ?? this.retweetedBy, // Set the new property here
+    );
   }
 
   @override
@@ -73,7 +107,9 @@ class Tweet {
           likes == other.likes &&
           commentIds == other.commentIds &&
           id == other.id &&
-          reshareCount == other.reshareCount);
+          reshareCount == other.reshareCount &&
+          retweetedBy ==
+              other.retweetedBy); // Include comparison for new property
 
   @override
   int get hashCode =>
@@ -87,10 +123,11 @@ class Tweet {
       likes.hashCode ^
       commentIds.hashCode ^
       id.hashCode ^
-      reshareCount.hashCode;
+      reshareCount.hashCode ^
+      retweetedBy.hashCode; // Include hashing for new property
 
   @override
   String toString() {
-    return 'Tweet{ text: $text, hashtags: $hashtags, link: $link, imageLinks: $imageLinks, uid: $uid, tweetType: $tweetType, tweetedAt: $tweetedAt, likes: $likes, commentIds: $commentIds, id: $id, reshareCount: $reshareCount,}';
+    return 'Tweet{ text: $text, hashtags: $hashtags, link: $link, imageLinks: $imageLinks, uid: $uid, tweetType: $tweetType, tweetedAt: $tweetedAt, likes: $likes, commentIds: $commentIds, id: $id, reshareCount: $reshareCount, retweetedBy: $retweetedBy }'; // Include new property in toString()
   }
 }
