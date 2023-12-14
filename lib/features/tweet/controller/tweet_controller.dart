@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:appwrite/appwrite.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twitter_clone/apis/storage_api.dart';
@@ -8,6 +9,7 @@ import 'package:twitter_clone/core/enums/tweet_type_enum.dart';
 import 'package:twitter_clone/core/utils.dart';
 import 'package:twitter_clone/features/auth/controller/auth_controller.dart';
 import 'package:twitter_clone/models/tweet_model.dart';
+import 'package:twitter_clone/models/user_model.dart';
 
 final tweetControllerProvider = StateNotifierProvider<TweetController, bool>(
   (ref) {
@@ -25,6 +27,11 @@ final getTweetsProvider = FutureProvider(
     return tweetController.getTweets();
   },
 );
+
+final getLatestTweetProvider = StreamProvider((ref) {
+  final tweetAPI = ref.watch(tweetAPIProvider);
+  return tweetAPI.getLatestTweet();
+});
 
 class TweetController extends StateNotifier<bool> {
   final TweetAPI _tweetAPI;
@@ -56,6 +63,43 @@ class TweetController extends StateNotifier<bool> {
     }
   }
 
+  Future<void> likeTweet(Tweet tweet, UserModel user) async {
+    List<String> likes = tweet.likes;
+    if (tweet.likes.contains(user.uid)) {
+      likes.remove(user.uid);
+    } else {
+      likes.add(user.uid);
+    }
+
+    tweet = tweet.copyWith(likes: likes);
+    final res = await _tweetAPI.likeTweet(tweet);
+    res.fold((l) => null, (r) => null);
+  }
+
+  Future<void> reshareTweet(
+      Tweet tweet, UserModel currentUser, BuildContext context) async {
+    tweet = tweet.copyWith(
+      retweetedBy: currentUser.name,
+      reshareCount: tweet.reshareCount + 1,
+    );
+    final res = await _tweetAPI.updateReshareCount(tweet);
+    res.fold(
+      (l) => showSnackBar(context, l.message),
+      (r) async {
+        tweet = tweet.copyWith(
+          id: ID.unique(),
+          reshareCount: 0,
+          tweetedAt: DateTime.now(),
+        );
+        final res2 = await _tweetAPI.shareTweet(tweet);
+        res2.fold(
+          (l) => showSnackBar(context, l.message),
+          (r) => showSnackBar(context, "Retweeted"),
+        );
+      },
+    );
+  }
+
   Future<void> _shareImageTweet(
       {required List<File> images,
       required String text,
@@ -78,7 +122,8 @@ class TweetController extends StateNotifier<bool> {
         likes: const [],
         commentIds: const [],
         id: '',
-        reshareCount: 0);
+        reshareCount: 0,
+        retweetedBy: '');
 
     final response = await _tweetAPI.shareTweet(tweet);
     state = false;
@@ -106,7 +151,8 @@ class TweetController extends StateNotifier<bool> {
         likes: const [],
         commentIds: const [],
         id: '',
-        reshareCount: 0);
+        reshareCount: 0,
+        retweetedBy: '');
 
     final response = await _tweetAPI.shareTweet(tweet);
     state = false;
