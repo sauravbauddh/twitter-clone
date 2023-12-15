@@ -11,9 +11,11 @@ import '../core/core.dart';
 abstract class ITweetAPI {
   FutureEither<Document> shareTweet(Tweet tweet);
   Future<List<Document>> getTweets();
+  Future<List<Document>> getRepliesToTweet(Tweet tweet);
   Stream<RealtimeMessage> getLatestTweet();
   FutureEither<Document> likeTweet(Tweet tweet);
   FutureEither<Document> updateReshareCount(Tweet tweet);
+  Future<Document> getTweetById(String id);
 }
 
 final tweetAPIProvider = Provider(
@@ -111,5 +113,25 @@ class TweetAPI implements ITweetAPI {
     } catch (e, st) {
       return left(Failure(e.toString(), st));
     }
+  }
+
+  @override
+  Future<List<Document>> getRepliesToTweet(Tweet tweet) async {
+    final doc = await _db.listDocuments(
+      databaseId: AppWriteConstants.databaseId,
+      collectionId: AppWriteConstants.tweetsCollection,
+      queries: [
+        Query.endsWith('repliedTo', tweet.id),
+      ],
+    );
+    return doc.documents;
+  }
+
+  @override
+  Future<Document> getTweetById(String id) {
+    return _db.getDocument(
+        databaseId: AppWriteConstants.databaseId,
+        collectionId: AppWriteConstants.tweetsCollection,
+        documentId: id);
   }
 }

@@ -94,10 +94,8 @@ class _LoginViewState extends ConsumerState<LoginView> {
                               ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  Navigator.push(
-                                    context,
-                                    SignUpView.route(),
-                                  );
+                                  Navigator.pushAndRemoveUntil(context,
+                                      SignUpView.route(), (route) => false);
                                 },
                             ),
                           ],
