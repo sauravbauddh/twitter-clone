@@ -19,6 +19,7 @@ abstract class IAuthAPI {
   FutureEither<Session> login(
       {required String email, required String password});
   Future<User?> currentUserAccount();
+  FutureEitherVoid logout();
 }
 
 class AuthAPI implements IAuthAPI {
@@ -69,6 +70,20 @@ class AuthAPI implements IAuthAPI {
       print("Unexpected error occurred: $e");
       print(stackTrace);
       return null;
+    }
+  }
+
+  @override
+  FutureEitherVoid logout() async {
+    try {
+      final User account = await _account.deleteSession(sessionId: 'current');
+      return right(null);
+    } on AppwriteException catch (e, stackTrace) {
+      print(e.message);
+      return left(
+          Failure(e.message ?? "Some unexpected error occoured", stackTrace));
+    } catch (e, stackTrace) {
+      return left(Failure(e.toString(), stackTrace));
     }
   }
 }

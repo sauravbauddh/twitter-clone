@@ -16,13 +16,15 @@ abstract class ITweetAPI {
   FutureEither<Document> likeTweet(Tweet tweet);
   FutureEither<Document> updateReshareCount(Tweet tweet);
   Future<Document> getTweetById(String id);
+  Future<List<Document>> getUserTweets(String uid);
+  Future<List<Document>> getTweetsByHashtag(String hashtag);
 }
 
 final tweetAPIProvider = Provider(
   (ref) {
     return TweetAPI(
       db: ref.watch(appwriteDatabaseProvider),
-      realtime: ref.watch(appwriteRealtimeProvider),
+      realtime: ref.watch(appwriteRealtimeProviderForTweets),
     );
   },
 );
@@ -133,5 +135,29 @@ class TweetAPI implements ITweetAPI {
         databaseId: AppWriteConstants.databaseId,
         collectionId: AppWriteConstants.tweetsCollection,
         documentId: id);
+  }
+
+  @override
+  Future<List<Document>> getUserTweets(String uid) async {
+    final docs = await _db.listDocuments(
+      databaseId: AppWriteConstants.databaseId,
+      collectionId: AppWriteConstants.tweetsCollection,
+      queries: [
+        Query.equal('uid', uid),
+      ],
+    );
+    return docs.documents;
+  }
+
+  @override
+  Future<List<Document>> getTweetsByHashtag(String hashtag) async {
+    final docs = await _db.listDocuments(
+      databaseId: AppWriteConstants.databaseId,
+      collectionId: AppWriteConstants.tweetsCollection,
+      queries: [
+        Query.search('hashtags', hashtag),
+      ],
+    );
+    return docs.documents;
   }
 }

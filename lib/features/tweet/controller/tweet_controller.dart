@@ -5,9 +5,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twitter_clone/apis/storage_api.dart';
 import 'package:twitter_clone/apis/tweet_api.dart';
+import 'package:twitter_clone/core/enums/notification_type_enum.dart';
 import 'package:twitter_clone/core/enums/tweet_type_enum.dart';
 import 'package:twitter_clone/core/utils.dart';
 import 'package:twitter_clone/features/auth/controller/auth_controller.dart';
+import 'package:twitter_clone/features/notifications/controller/notification_controller.dart';
 import 'package:twitter_clone/models/tweet_model.dart';
 import 'package:twitter_clone/models/user_model.dart';
 
@@ -17,6 +19,8 @@ final tweetControllerProvider = StateNotifierProvider<TweetController, bool>(
       tweetAPI: ref.watch(tweetAPIProvider),
       ref: ref,
       storageAPI: ref.watch(storageAPIProvider),
+      notificationController:
+          ref.watch(notificationControllerProvider.notifier),
     );
   },
 );
@@ -25,6 +29,13 @@ final getTweetsProvider = FutureProvider(
   (ref) {
     final tweetController = ref.watch(tweetControllerProvider.notifier);
     return tweetController.getTweets();
+  },
+);
+
+final getTweetsByHashtagProvider = FutureProvider.family(
+  (ref, String hashtag) {
+    final tweetController = ref.watch(tweetControllerProvider.notifier);
+    return tweetController.getTweetsByHashtag(hashtag);
   },
 );
 
@@ -48,22 +59,27 @@ final getTweetByIdProvider = FutureProvider.family((ref, String id) {
 class TweetController extends StateNotifier<bool> {
   final TweetAPI _tweetAPI;
   final StorageAPI _storageAPI;
+  final NotificationController _notificationController;
   final Ref _ref;
 
   TweetController(
       {required TweetAPI tweetAPI,
       required StorageAPI storageAPI,
-      required Ref ref})
+      required Ref ref,
+      required NotificationController notificationController})
       : _tweetAPI = tweetAPI,
         _storageAPI = storageAPI,
+        _notificationController = notificationController,
         _ref = ref,
         super(false);
 
-  void shareTweet(
-      {required List<File> images,
-      required String text,
-      required BuildContext context,
-      required String repliedTo}) {
+  void shareTweet({
+    required List<File> images,
+    required String text,
+    required BuildContext context,
+    required String repliedTo,
+    required String repliedToUserId,
+  }) {
     if (text.isEmpty) {
       showSnackBar(context, "Please enter text");
       return;
@@ -71,9 +87,17 @@ class TweetController extends StateNotifier<bool> {
 
     if (images.isNotEmpty) {
       _shareImageTweet(
-          images: images, text: text, context: context, repliedTo: repliedTo);
+          images: images,
+          text: text,
+          context: context,
+          repliedTo: repliedTo,
+          repliedToUserId: repliedToUserId);
     } else {
-      _shareTextTweet(text: text, context: context, repliedTo: repliedTo);
+      _shareTextTweet(
+          text: text,
+          context: context,
+          repliedTo: repliedTo,
+          repliedToUserId: repliedToUserId);
     }
   }
 
@@ -87,7 +111,14 @@ class TweetController extends StateNotifier<bool> {
 
     tweet = tweet.copyWith(likes: likes);
     final res = await _tweetAPI.likeTweet(tweet);
-    res.fold((l) => null, (r) => null);
+    res.fold(
+      (l) => null,
+      (r) => _notificationController.createNotification(
+          text: "${user.name} liked your tweet",
+          postId: tweet.id,
+          notificationType: NotificationType.like,
+          uid: tweet.uid),
+    );
   }
 
   Future<void> reshareTweet(
@@ -108,7 +139,14 @@ class TweetController extends StateNotifier<bool> {
         final res2 = await _tweetAPI.shareTweet(tweet);
         res2.fold(
           (l) => showSnackBar(context, l.message),
-          (r) => showSnackBar(context, "Retweeted"),
+          (r) => {
+            _notificationController.createNotification(
+                text: "${currentUser.name} shared your tweet",
+                postId: tweet.id,
+                notificationType: NotificationType.retweet,
+                uid: tweet.uid),
+            showSnackBar(context, "Retweeted")
+          },
         );
       },
     );
@@ -118,7 +156,8 @@ class TweetController extends StateNotifier<bool> {
       {required List<File> images,
       required String text,
       required BuildContext context,
-      required String repliedTo}) async {
+      required String repliedTo,
+      required String repliedToUserId}) async {
     state = true;
     final hashtags = _getHashtagsFromText(text);
     String link = _getLinkFromText(text);
@@ -143,16 +182,31 @@ class TweetController extends StateNotifier<bool> {
     );
 
     final response = await _tweetAPI.shareTweet(tweet);
+    response.fold(
+      (l) {
+        showSnackBar(context, l.message);
+      },
+      (r) => {
+        if (repliedToUserId.isNotEmpty)
+          {
+            _notificationController.createNotification(
+                text: "${user.name} replied to your tweet",
+                postId: r.$id,
+                notificationType: NotificationType.reply,
+                uid: repliedToUserId),
+            showSnackBar(context, "Replied")
+          }
+      },
+    );
     state = false;
-    response.fold((l) {
-      showSnackBar(context, l.message);
-    }, (r) => {});
   }
 
-  Future<void> _shareTextTweet(
-      {required String text,
-      required BuildContext context,
-      required String repliedTo}) async {
+  Future<void> _shareTextTweet({
+    required String text,
+    required BuildContext context,
+    required String repliedTo,
+    required String repliedToUserId,
+  }) async {
     state = true;
     final hashtags = _getHashtagsFromText(text);
     String link = _getLinkFromText(text);
@@ -176,10 +230,24 @@ class TweetController extends StateNotifier<bool> {
     );
 
     final response = await _tweetAPI.shareTweet(tweet);
+
+    response.fold(
+      (l) {
+        showSnackBar(context, l.message);
+      },
+      (r) => {
+        if (repliedToUserId.isNotEmpty)
+          {
+            _notificationController.createNotification(
+                text: "${user.name} replied to your tweet",
+                postId: r.$id,
+                notificationType: NotificationType.reply,
+                uid: repliedToUserId),
+            showSnackBar(context, "Replied")
+          }
+      },
+    );
     state = false;
-    response.fold((l) {
-      showSnackBar(context, l.message);
-    }, (r) => {});
   }
 
   String _getLinkFromText(String text) {
@@ -206,6 +274,11 @@ class TweetController extends StateNotifier<bool> {
 
   Future<List<Tweet>> getTweets() async {
     final tweetList = await _tweetAPI.getTweets();
+    return tweetList.map((tweet) => Tweet.fromMap(tweet.data)).toList();
+  }
+
+  Future<List<Tweet>> getTweetsByHashtag(String hashtag) async {
+    final tweetList = await _tweetAPI.getTweetsByHashtag(hashtag);
     return tweetList.map((tweet) => Tweet.fromMap(tweet.data)).toList();
   }
 

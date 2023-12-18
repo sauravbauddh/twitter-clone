@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:twitter_clone/constants/constants.dart';
-import 'package:twitter_clone/features/tweet/views/create_tweet_view.dart';
+import 'package:twitter_clone/features/home/widget/side_drawer.dart';
+import 'package:twitter_clone/features/tweet/view/create_tweet_view.dart';
 import 'package:twitter_clone/theme/pallete.dart';
 
 class HomeView extends StatefulWidget {
@@ -31,6 +32,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const SideDrawer(),
       floatingActionButton: FloatingActionButton(
         shape: const CircleBorder(),
         onPressed: () {
@@ -42,7 +44,7 @@ class _HomeViewState extends State<HomeView> {
           size: 28,
         ),
       ),
-      appBar: appBar,
+      appBar: _page == 0 ? appBar : null,
       body: IndexedStack(
         index: _page,
         children: UIConstants.bottomTabBarPages,

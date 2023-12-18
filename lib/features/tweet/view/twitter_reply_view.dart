@@ -98,11 +98,11 @@ class TwitterReplyView extends ConsumerWidget {
       bottomNavigationBar: TextField(
         onSubmitted: (value) {
           ref.read(tweetControllerProvider.notifier).shareTweet(
-            images: [],
-            text: value,
-            context: context,
-            repliedTo: tweet.id,
-          );
+              images: [],
+              text: value,
+              context: context,
+              repliedTo: tweet.id,
+              repliedToUserId: tweet.uid);
         },
         decoration: const InputDecoration(hintText: "Tweet your reply"),
       ),
